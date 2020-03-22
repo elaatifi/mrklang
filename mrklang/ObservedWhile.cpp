@@ -27,10 +27,32 @@
 #include "ObservedWhile.h"
 
 namespace MRK {
+    bool* m_Error;
+
 	void ObservedWhile(mrks function<void(bool&)> loop) {
 		bool run = true;
 		while (run) {
 			loop(run);
 		}
 	}
+
+    void SetError(bool val) {
+        if (m_Error)
+            *m_Error = val;
+    }
+
+    bool ObservedWhile(mrks function<void(bool&, void(*)(bool))> loop, mrks function<bool()> condition) {
+        bool error = false;
+        m_Error = &error;
+
+        bool run = true;
+        while (condition()) {
+            if (!run)
+                break;
+
+            loop(run, SetError);
+        }
+
+        return error;
+    }
 }

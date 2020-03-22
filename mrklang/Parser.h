@@ -39,6 +39,7 @@
 #define MRK_LOG_PARAM mrks stringstream& stream
 #define MRK_SCOPE_OWNER_CLASS 1
 #define MRK_SCOPE_OWNER_METHOD 2
+#define MRK_SCOPE_OWNER_PARAM 3
 
 namespace MRK {
 	struct Keyword;
@@ -48,6 +49,7 @@ namespace MRK {
 	struct StructuralScope;
 	struct ParseClass;
 	struct ParseMethod;
+	struct ParseParam;
 	enum class ParserVerityState : mrku32;
 
 	class Parser {
@@ -81,12 +83,15 @@ namespace MRK {
 		void HandleInclude();
 		void HandleClass();
 		void HandleMethod();
+		void HandleParam();
 		void Error(mrks string message, bool terminate);
 		void Error(mrks string message);
 		void AssignStructuralScopes();
 		StructuralScope* GetStructuralScope(int pos = -1);
 		bool IsValidIdentifier(char& c);
 		ParseClass* GetCurrentClass();
+		ParseMethod* GetCurrentMethod();
+		bool GetIdentifierOrCharValue(Token* token, mrks string* val);
 
 	public:
 		Parser(mrks vector<Source> srcs);
@@ -106,6 +111,7 @@ namespace MRK {
 		Method,
 		Var,
 		Return,
+		Param,
 
 		//LANG MISC
 		CPP,
@@ -170,5 +176,14 @@ namespace MRK {
 
 		int ClassIndex;
 		int ScopeIndex;
+
+		mrks vector<ParseParam> Params;
+	};
+
+	struct ParseParam : public ParseBase {
+		mrks string Name;
+		mrks string Typename;
+
+		int MethodIndex;
 	};
 }

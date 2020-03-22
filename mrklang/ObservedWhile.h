@@ -31,5 +31,7 @@
 #include "Common.h"
 
 namespace MRK {
-	void ObservedWhile(mrks function<void(bool&)> loop);
+#define MRK_OW_SET_ERROR void(*SetError)(bool error)
+
+    bool ObservedWhile(mrks function<void(bool&, void(*)(bool))> loop, mrks function<bool()> condition = []() -> bool { return true; });
 }

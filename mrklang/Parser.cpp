@@ -34,6 +34,7 @@ namespace MRK {
 		Keyword(KeywordType::Method, "m"),
 		Keyword(KeywordType::Var, "v"),
 		Keyword(KeywordType::Return, "r"),
+		Keyword(KeywordType::Param, "p"),
 
 		//langs
 		Keyword(KeywordType::CPP, "__cpp"),
@@ -120,6 +121,10 @@ namespace MRK {
 
 					break;
 
+				case KeywordType::Param:
+					HandleParam();
+					break;
+
 				}
 			}
 			else
@@ -170,7 +175,7 @@ namespace MRK {
 		mrks string identifier;
 		Token* _token = 0;
 			
-		ObservedWhile([&](bool& run) {
+		ObservedWhile([&](bool& run, MRK_OW_SET_ERROR) {
 			_token = Advance();
 			if (!_token) {
 				if (!identifier.empty())
@@ -287,7 +292,7 @@ namespace MRK {
 	}
 
 	void Parser::HandleMethod() {
-		//m <type> name() {}
+		//m <type> name {}
 		Token* _token = Advance();
 		if (!_token) {
 			Error(MRK_ERROR_EXPECTED_TYPENAMEORIDENTIFIER);
@@ -365,6 +370,64 @@ namespace MRK {
 
 		m_TokenPos = scope->Open + 1;
 		m_SkippedIndices.push_back(scope->Close);
+	}
+
+	void Parser::HandleParam() {
+		// p { xxx }
+		ParseMethod* _method = GetCurrentMethod();
+		if (!_method)
+			return;
+
+		Advance();
+
+		StructuralScope* scope = GetStructuralScope();
+		if (!scope) {
+			return;
+		}
+
+		//own the scope
+		scope->Owner = MRK_SCOPE_OWNER_PARAM;
+
+		ParseParam _param;
+		mrku32 pstack = 0;
+		if (ObservedWhile([&](bool& run, MRK_OW_SET_ERROR) {
+			Token* _token = Advance();
+			if (!_token) {
+				Error(pstack % 2 ? MRK_ERROR_EXPECTED_IDENTIFIER : MRK_ERROR_EXPECTED_TYPENAME);
+				run = false;
+				SetError(true);
+				return;
+			}
+
+			mrks string buf;
+			if (!GetIdentifierOrCharValue(_token, &buf)) {
+				Error(pstack % 2 ? MRK_ERROR_EXPECTED_IDENTIFIER : MRK_ERROR_EXPECTED_TYPENAME);
+				run = false;
+				SetError(true);
+				return;
+			}
+
+			if (pstack % 2) {
+				_param.Name = buf;
+				_param.Index = _method->Params.size();
+				_param.MethodIndex = _method->Index;
+				_method->Params.push_back(_param);
+
+				Log([&](MRK_LOG_PARAM) {
+					stream << "Added param [" << _method->Name << "] '" << _param.Name << ':' << _param.Typename << "'\n";
+					});
+			}
+			else
+				_param.Typename = buf;
+
+			pstack++;
+			}, [&]() {
+				return m_TokenPos < scope->Close - 1;
+			})) {
+			m_TokenPos = scope->Close + 1;
+		}
+		else
+			Advance();
 	}
 
 	void Parser::Error(mrks string message, bool terminate) {
@@ -466,6 +529,57 @@ namespace MRK {
 		}
 
 		return 0;
+	}
+
+	ParseMethod* Parser::GetCurrentMethod() {
+		for (int pos = m_TokenPos; pos > -1; pos--) {
+			StructuralScope* scope = GetStructuralScope(pos);
+			if (!scope || scope->Owner != MRK_SCOPE_OWNER_METHOD)
+				continue;
+
+			if (scope->Close < m_TokenPos)
+				continue;
+
+			return &*((m_ParseContext->ParseClasses.begin() + *scope->Data)->Methods.begin() + scope->Data[1]);
+		}
+
+		return 0;
+	}
+
+	bool Parser::GetIdentifierOrCharValue(Token* token, mrks string* val) {
+		if (!token || !val)
+			return false;
+
+		switch (token->ContextualKind) {
+
+		case TOKEN_CONTEXTUAL_KIND_CHAR: {
+			bool dq = false;
+			switch (token->Value.CharValue) {
+
+			case '{':
+			case '}':
+			case '.':
+				dq = true;
+				break;
+			}
+
+			if (dq)
+				return false;
+			}
+
+			*val = token->Value.CharValue;
+			break;
+
+		case TOKEN_CONTEXTUAL_KIND_IDENTIFIER:
+			*val = token->Value.IdentifierValue;
+			break;
+
+		default:
+			return false;
+
+		}
+
+		return true;
 	}
 
 	Parser::Parser(mrks vector<Source> srcs) : m_Sources(srcs) {

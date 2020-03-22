@@ -40,7 +40,7 @@ int main() {
 	mrk Parser parser(mrks vector<mrk Source> {
 		mrk Source{
 			"INTERNAL.mrk",
-			"i mrk; i mrk.math; c Int32 { c IntByteUnion { m int MRKConvertToInt { } m .{} m long DieLen { } c XyzIzter {  } } } c Int64 { } c Int128 { }"
+			"i mrk; i mrk.math; c Int32 { c IntByteUnion { m int MRKConvertToInt { p { int byte1 byte SZ } } m .{ p{}} m long DieLen { p {string x string name} } c XyzIzter {  } } } c Int64 { } c Int128 { }"
 		}
 	});
 
