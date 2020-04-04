@@ -118,7 +118,7 @@ namespace MRK {
 					break;
 
 				case KeywordType::Var:
-
+					HandleVar();
 					break;
 
 				case KeywordType::Param:
@@ -392,15 +392,8 @@ namespace MRK {
 		mrku32 pstack = 0;
 		if (ObservedWhile([&](bool& run, MRK_OW_SET_ERROR) {
 			Token* _token = Advance();
-			if (!_token) {
-				Error(pstack % 2 ? MRK_ERROR_EXPECTED_IDENTIFIER : MRK_ERROR_EXPECTED_TYPENAME);
-				run = false;
-				SetError(true);
-				return;
-			}
-
 			mrks string buf;
-			if (!GetIdentifierOrCharValue(_token, &buf)) {
+			if (!_token || !GetIdentifierOrCharValue(_token, &buf)) {
 				Error(pstack % 2 ? MRK_ERROR_EXPECTED_IDENTIFIER : MRK_ERROR_EXPECTED_TYPENAME);
 				run = false;
 				SetError(true);
@@ -428,6 +421,56 @@ namespace MRK {
 		}
 		else
 			Advance();
+	}
+
+	void Parser::HandleVar() {
+		ParseClass* _class = GetCurrentClass();
+		if (!_class) {
+			Error(MRK_ERROR_NO_CLASS_CXT);
+			return;
+		}
+
+		mrks string* _buf = new mrks string[2] {
+			"", ""
+		};
+
+		for (mrku32 i = 0; i < 2; i++) {
+			//v type name {
+			//	r default();
+			//}
+			Token* _token = Advance();
+			if (!_token) {
+				Error(i ? MRK_ERROR_EXPECTED_IDENTIFIER : MRK_ERROR_EXPECTED_TYPENAME);
+				return;
+			}
+
+			if (!GetIdentifierOrCharValue(_token, &_buf[i])) {
+				Error(i ? MRK_ERROR_EXPECTED_IDENTIFIER : MRK_ERROR_EXPECTED_TYPENAME);
+				return;
+			}
+		}
+
+		ParseMethod* _method = GetCurrentMethod();
+		mrks vector<ParseVar>* varOwner = _method ? &_method->Vars : &_class->Fields;
+
+		ParseVar var = ParseVar{
+			(int)varOwner->size(),
+			_buf[0],
+			_buf[1],
+			!_method,
+			_method ? -1 : _class->Index,
+			_method ? _method->Index : -1
+		};
+
+		varOwner->push_back(var);
+
+		Advance();
+
+		//DEFAULT VALUES = LATER
+		/*StructuralScope* scope = GetStructuralScope();
+		if (scope) {
+
+		}*/
 	}
 
 	void Parser::Error(mrks string message, bool terminate) {

@@ -40,6 +40,7 @@
 #define MRK_SCOPE_OWNER_CLASS 1
 #define MRK_SCOPE_OWNER_METHOD 2
 #define MRK_SCOPE_OWNER_PARAM 3
+#define MRK_SCOPE_OWNER_VAR 4 //default value
 
 namespace MRK {
 	struct Keyword;
@@ -50,6 +51,7 @@ namespace MRK {
 	struct ParseClass;
 	struct ParseMethod;
 	struct ParseParam;
+	struct ParseVar;
 	enum class ParserVerityState : mrku32;
 
 	class Parser {
@@ -84,6 +86,7 @@ namespace MRK {
 		void HandleClass();
 		void HandleMethod();
 		void HandleParam();
+		void HandleVar();
 		void Error(mrks string message, bool terminate);
 		void Error(mrks string message);
 		void AssignStructuralScopes();
@@ -168,6 +171,7 @@ namespace MRK {
 		int ScopeIndex;
 
 		mrks vector<ParseMethod> Methods;
+		mrks vector<ParseVar> Fields;
 	};
 
 	struct ParseMethod : public ParseBase {
@@ -178,12 +182,22 @@ namespace MRK {
 		int ScopeIndex;
 
 		mrks vector<ParseParam> Params;
+		mrks vector<ParseVar> Vars;
 	};
 
 	struct ParseParam : public ParseBase {
 		mrks string Name;
 		mrks string Typename;
 
+		int MethodIndex;
+	};
+
+	struct ParseVar : public ParseBase {
+		mrks string Name;
+		mrks string Typename;
+
+		bool IsMyOwnerSad; // if true, it means owner = class
+		int ClassIndex;
 		int MethodIndex;
 	};
 }
